@@ -32,7 +32,8 @@ just build         # clone v2.11.0, apply both patches, build the patched pbm-ag
 ```
 
 Three experiments total: 1 and 2 are one-command and self-verifying, 3 is a guided
-manual recipe (it needs a live restore lifecycle and a hand-timed kill).
+manual recipe (it needs a live restore lifecycle and a hand-timed kill). No `just`?
+Every recipe body is a single plain command; run it straight from the [justfile](justfile).
 
 ## The incident
 
@@ -72,7 +73,7 @@ final `toState(StatusDone)` writes neither `cluster.done` nor `cluster.error`
 ### 1. Protocol model (30 seconds, no dependencies)
 
 ```
-python3 model/pbm_state_machine.py
+just model
 ```
 
 Pure simulation: no MongoDB, no PBM binaries, no network. Discrete-event model of the file-coordination protocol (heartbeats, staleness, Done-phase
@@ -90,7 +91,7 @@ limits): [model/README.md](model/README.md).
 ### 2. Storage-deadline A/B (about 10 minutes)
 
 ```
-cd stall-test && ./run.sh
+just stall
 ```
 
 Clones PBM `v2.11.0`, builds a `FileStat` probe from the pristine tree, applies
@@ -101,7 +102,7 @@ Clones PBM `v2.11.0`, builds a `FileStat` probe from the pristine tree, applies
 | `FileStat` vs black hole (accepts TCP, never responds) | Still blocked at the cutoff (default 300s; the incident ran 8+ hours) | Errors at ~60s with `context deadline exceeded` |
 | `FileStat` vs real MinIO (needs docker; skipped otherwise) | ~15ms, `err=<nil>` | ~7ms, `err=<nil>` |
 
-Exit code 0 only if every check passes. `CUTOFF=120 ./run.sh` for a faster demo.
+Exit code 0 only if every check passes. `just stall-quick` for a faster demo (120s cutoff).
 
 ### 3. Close-phase kill test (bug A, manual, about 30 minutes)
 
