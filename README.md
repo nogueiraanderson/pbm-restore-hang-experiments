@@ -75,7 +75,7 @@ final `toState(StatusDone)` writes neither `cluster.done` nor `cluster.error`
 python3 model/pbm_state_machine.py
 ```
 
-Discrete-event model of the file-coordination protocol (heartbeats, staleness, Done-phase
+Pure simulation: no MongoDB, no PBM binaries, no network. Discrete-event model of the file-coordination protocol (heartbeats, staleness, Done-phase
 convergence, `close()`), with exhaustive single-fault injection: hang, kill, clock skew, lost
 status file, bounded and permanent storage outage, each across nodes and phases, each in
 pristine and bug-A-patched mode. Expected result: exactly one fault reproduces all six
