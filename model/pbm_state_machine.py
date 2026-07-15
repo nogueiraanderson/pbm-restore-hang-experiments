@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# ///
 """Executable state-machine model of PBM v2.11.0 physical-restore coordination.
 
 Encodes the file-coordination protocol extracted from pbm/restore/physical.go

@@ -8,6 +8,32 @@ with a protocol model that explains why only one of them matches the incident.
 
 All line references are pristine PBM `v2.11.0` unless noted.
 
+## Requirements
+
+| Tool | Needed for |
+|------|-----------|
+| Python >= 3.10 (or [uv](https://docs.astral.sh/uv/)) | Experiment 1 (model) and the black-hole server in experiment 2 |
+| git, Go >= 1.25 | Experiment 2 (clones PBM v2.11.0 and builds the probes) |
+| docker | Experiment 2's MinIO no-regression leg (auto-skipped without docker; the black-hole A/B still runs) and all of experiment 3 |
+| [just](https://github.com/casey/just) (optional) | The one-word recipes below; every step also works as a plain command |
+
+Network access to github.com (PBM clone) and Docker Hub (minio, mc, percona images).
+Linux assumed; on macOS install coreutils for `timeout`. A remote docker engine works:
+`run.sh` derives the MinIO host from `DOCKER_HOST` (override with `MINIO_HOST`).
+
+## Quickstart
+
+```
+just model         # experiment 1: protocol model + fault injection (~30s)
+just stall         # experiment 2: storage-deadline A/B, fail-closed (~10 min)
+just stall-quick   # experiment 2 with a 120s hang cutoff (~5 min)
+just close-up      # experiment 3: build image + start the 3-node RS + MinIO
+just build         # clone v2.11.0, apply both patches, build the patched pbm-agent
+```
+
+Three experiments total: 1 and 2 are one-command and self-verifying, 3 is a guided
+manual recipe (it needs a live restore lifecycle and a hand-timed kill).
+
 ## The incident
 
 3-node replica set, backup taken with PBM 2.7.0, PITR restore with 2.11.0, S3 storage.
@@ -58,6 +84,9 @@ reproduces identically with the bug-A fix applied. A pure hang fails (secondarie
 drop a fresh-heartbeat peer), a kill fails (heartbeats were alive 8 hours later), a permanent
 outage fails (heartbeats resumed).
 
+Full model spec (protocol semantics, fault space, the six-observable verdict, fidelity
+limits): [model/README.md](model/README.md).
+
 ### 2. Storage-deadline A/B (about 10 minutes)
 
 ```
@@ -94,7 +123,8 @@ for that, stall storage I/O on the primary during oplog replay and keep the conn
 ## Layout
 
 ```
-model/                pbm_state_machine.py: protocol model + fault injection
+justfile              One-word recipes (model, stall, stall-quick, build, close-up)
+model/                pbm_state_machine.py + README with the full model spec (experiment 1)
 stall-test/           run.sh, blackhole.py, probe/, patches/  (experiment 2)
 close-phase-test/     compose.yml, Dockerfile.psmdb-pbm       (experiment 3)
 ```

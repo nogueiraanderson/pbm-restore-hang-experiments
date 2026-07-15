@@ -182,9 +182,24 @@ run_happy_path() {
   docker rm -f "${MINIO_CONTAINER}" >/dev/null 2>&1 || true
 }
 
+build_fixed_agent() {
+  echo "Building patched pbm-agent..."
+  (cd "${PBM_DIR}" && go build -o "${WORK_DIR}/pbm-agent-fixed" ./cmd/pbm-agent)
+  echo "Patched agent: ${WORK_DIR}/pbm-agent-fixed"
+  echo "Note: patch 0001 also lowers hbFrameSec to 15 for fast testing;"
+  echo "drop that hunk before building for anything production-like."
+}
+
 main() {
+  local mode="${1:-test}"
+
   preflight
   prepare_tree_and_probes
+
+  if [[ "${mode}" == "build" ]]; then
+    build_fixed_agent
+    return
+  fi
 
   echo
   printf '%-38s %-6s %s\n' "CHECK" "RESULT" "DETAIL"
