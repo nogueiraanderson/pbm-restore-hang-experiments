@@ -1,0 +1,12 @@
+diff --git a/pbm/restore/physical.go b/pbm/restore/physical.go
+--- a/pbm/restore/physical.go
++++ b/pbm/restore/physical.go
+@@ -61,7 +61,7 @@ const (
+
+ 	internalMongodLog = "pbm.restore.log"
+
+-	hbFrameSec          = 60 * 2
++	hbFrameSec          = 15 // test-only: staleness fires at 30s instead of 240s
+ 	syncHbSuffix        = "hb"
+ 	syncHbCleanupSuffix = "cleanup.hb"
+ 	hbCleanupFrame      = 15 * time.Second

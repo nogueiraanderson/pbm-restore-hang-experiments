@@ -118,7 +118,8 @@ for that, stall storage I/O on the primary during oplog replay and keep the conn
 
 ## Patches
 
-- `0001-stop-restore-hb-before-cluster-status-wait.patch`: bug A fix for `v2.11.0`. Moves `close(r.stopHB)` before `waitClusterStatus()` and re-creates the channel for the cleanup heartbeat (the re-create is needed on 2.11 only; since 2.13 `stopCleanupHB` is a separate channel, which is why PR #1339 is a plain move). Also lowers `hbFrameSec` to 15 for fast testing; drop that hunk for production builds.
+- `0000-test-fast-heartbeat.patch`: test-only. Lowers `hbFrameSec` from `60*2` to 15 so staleness fires at ~30s instead of 240s. Apply to BOTH arms of any A/B; never to production builds.
+- `0001-stop-restore-hb-before-cluster-status-wait.patch`: bug A fix for `v2.11.0`. Moves `close(r.stopHB)` before `waitClusterStatus()` and re-creates the channel for the cleanup heartbeat (the re-create is needed on 2.11 only; since 2.13 `stopCleanupHB` is a separate channel, which is why PR #1339 is a plain move).
 - `0002-add-deadlines-to-s3-storage-calls.patch`: bug B fix candidate. 60s context deadline on `FileStat`'s HeadObject, and a real `http.Transport` (10s dial, 30s TCP keepalive, 60s `ResponseHeaderTimeout`, stock pool settings). Deliberately no overall `http.Client.Timeout`: backup and restore streams may legitimately run for hours.
 
 ## Layout

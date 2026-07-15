@@ -186,8 +186,8 @@ build_fixed_agent() {
   echo "Building patched pbm-agent..."
   (cd "${PBM_DIR}" && go build -o "${WORK_DIR}/pbm-agent-fixed" ./cmd/pbm-agent)
   echo "Patched agent: ${WORK_DIR}/pbm-agent-fixed"
-  echo "Note: patch 0001 also lowers hbFrameSec to 15 for fast testing;"
-  echo "drop that hunk before building for anything production-like."
+  echo "Note: patch 0000 lowers hbFrameSec to 15 for fast testing;"
+  echo "skip it when building for anything production-like."
 }
 
 main() {
