@@ -1,0 +1,55 @@
+# 3-node RS + MinIO for the close-phase kill test (see README, experiment 3).
+#
+# LIMITATION: physical restore stops mongod; with mongod as the container's
+# main process the container exits mid-restore. For the full restore
+# lifecycle either run mongod and pbm-agent under a wrapper script as PID 1,
+# or use VMs with the stock systemd units. This compose is the setup and
+# backup/PITR half of the recipe; it is sufficient up to the kill window on
+# platforms where the agent survives mongod stopping.
+services:
+  minio:
+    image: minio/minio:latest
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      retries: 12
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "mc alias set local http://minio:9000 minioadmin minioadmin
+      && mc mb --ignore-existing local/pbm-backups"
+
+  mongo1: &node
+    image: psmdb-pbm:7.0
+    command:
+      - bash
+      - -c
+      - |
+        mongod --replSet rs01 --bind_ip_all --port 27017 &
+        MONGOD_PID=$$!
+        until mongosh --quiet --eval 'db.runCommand({ping: 1}).ok' >/dev/null 2>&1; do sleep 1; done
+        export PBM_MONGODB_URI="mongodb://127.0.0.1:27017"
+        pbm-agent &
+        wait "$$MONGOD_PID"
+    ports:
+      - "27017:27017"
+
+  mongo2:
+    <<: *node
+    ports:
+      - "27018:27017"
+
+  mongo3:
+    <<: *node
+    ports:
+      - "27019:27017"

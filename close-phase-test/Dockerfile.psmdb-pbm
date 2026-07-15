@@ -1,0 +1,8 @@
+# Combined PSMDB + PBM image for the close-phase kill test.
+# Build: docker build -t psmdb-pbm:7.0 -f Dockerfile.psmdb-pbm .
+FROM percona/percona-backup-mongodb:2.11.0 AS pbm
+FROM percona/percona-server-mongodb:7.0
+USER root
+COPY --from=pbm /usr/bin/pbm /usr/bin/pbm
+COPY --from=pbm /usr/bin/pbm-agent /usr/bin/pbm-agent
+USER mongodb

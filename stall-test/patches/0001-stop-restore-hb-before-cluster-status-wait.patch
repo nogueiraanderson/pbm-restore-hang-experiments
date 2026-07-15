@@ -1,0 +1,37 @@
+diff --git a/pbm/restore/physical.go b/pbm/restore/physical.go
+index 9ac498e..78dc4ac 100644
+--- a/pbm/restore/physical.go
++++ b/pbm/restore/physical.go
+@@ -61,7 +61,7 @@ const (
+ 
+ 	internalMongodLog = "pbm.restore.log"
+ 
+-	hbFrameSec          = 60 * 2
++	hbFrameSec          = 15 // reduced from 60*2 for testing PBM-1712 fix
+ 	syncHbSuffix        = "hb"
+ 	syncHbCleanupSuffix = "cleanup.hb"
+ 	hbCleanupFrame      = 15 * time.Second
+@@ -251,12 +251,23 @@ func (r *PhysRestore) close(noerr bool, progress nodeStatus) (err error) {
+ 		}
+ 	}
+ 
++	// FIX(PBM-1712): Stop restore heartbeats BEFORE waiting for cluster status.
++	// Previously, the heartbeat goroutine kept writing cluster.hb every 120s,
++	// which prevented the 240s staleness check in waitClusterStatus() from
++	// ever firing. If another node's status file was missing, the agent would
++	// loop forever uploading heartbeats.
++	if r.stopHB != nil {
++		close(r.stopHB)
++	}
++
+ 	r.log.Debug("wait for cluster status")
+ 	cStatus, err := r.waitClusterStatus()
+ 	if err != nil {
+ 		r.log.Warning("waiting for cluster status during cleanup: %v", err)
+ 	}
+ 
++	// Create new channel for cleanup heartbeats (separate from restore HBs)
++	r.stopHB = make(chan struct{})
+ 	go r.startCleanupHb()
+ 
+ 	defer func() {

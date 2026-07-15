@@ -1,0 +1,61 @@
+diff --git a/pbm/storage/s3/s3.go b/pbm/storage/s3/s3.go
+index dd0cbb6..7420fa3 100644
+--- a/pbm/storage/s3/s3.go
++++ b/pbm/storage/s3/s3.go
+@@ -8,6 +8,7 @@ import (
+ 	"fmt"
+ 	"io"
+ 	"maps"
++	"net"
+ 	"net/http"
+ 	"os"
+ 	"path"
+@@ -555,7 +556,12 @@ func (s *S3) FileStat(name string) (storage.FileInfo, error) {
+ 		headOpts.SSECustomerKeyMD5 = aws.String(base64.StdEncoding.EncodeToString(keyMD5[:]))
+ 	}
+ 
+-	h, err := s.s3cli.HeadObject(context.Background(), headOpts)
++	// HeadObject carries no response body, so a hard deadline is safe here;
++	// without one a stalled connection blocks the caller indefinitely.
++	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
++	defer cancel()
++
++	h, err := s.s3cli.HeadObject(ctx, headOpts)
+ 	if err != nil {
+ 		var noSuchKeyErr *types.NoSuchKey
+ 		if errors.As(err, &noSuchKeyErr) {
+@@ -608,14 +614,28 @@ func (s *S3) Delete(name string) error {
+ }
+ 
+ func (s *S3) buildLoadOptions() []func(*config.LoadOptions) error {
+-	httpClient := &http.Client{}
++	// No overall http.Client.Timeout: backup and restore streams may
++	// legitimately run for hours. Instead bound connection setup and the
++	// wait for response headers, and enable TCP keepalives, so a silently
++	// dead connection surfaces as an error instead of blocking a storage
++	// call forever.
++	transport := &http.Transport{
++		Proxy: http.ProxyFromEnvironment,
++		DialContext: (&net.Dialer{
++			Timeout:   10 * time.Second,
++			KeepAlive: 30 * time.Second,
++		}).DialContext,
++		ForceAttemptHTTP2:     true,
++		MaxIdleConns:          100,
++		IdleConnTimeout:       90 * time.Second,
++		TLSHandshakeTimeout:   10 * time.Second,
++		ExpectContinueTimeout: 1 * time.Second,
++		ResponseHeaderTimeout: 60 * time.Second,
++	}
+ 	if s.opts.InsecureSkipTLSVerify {
+-		httpClient = &http.Client{
+-			Transport: &http.Transport{
+-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
+-			},
+-		}
++		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+ 	}
++	httpClient := &http.Client{Transport: transport}
+ 
+ 	cfgOpts := []func(*config.LoadOptions) error{
+ 		config.WithRegion(s.opts.Region),
