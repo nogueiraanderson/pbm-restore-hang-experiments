@@ -58,3 +58,7 @@ wedged-read flag, models one non-sharded replica set, uses nominal phase duratio
 to the incident timeline, and does not model SDK retry ladders or partial-read errors in
 `waitFiles`. It proves consistency and uniqueness within this fault space, not the
 absence of exotic multi-fault explanations.
+
+[FIDELITY.md](FIDELITY.md) is the line-by-line audit of the model against a fresh
+`v2.11.0` clone: every load-bearing semantic matches exactly; seven documented
+abstractions, none able to affect the verdicts.
